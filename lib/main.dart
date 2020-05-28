@@ -1,0 +1,262 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:math_expressions/math_expressions.dart';
+import 'package:my_calcy/constants.dart';
+
+void main() => runApp(MyApp()); // App Entry Point
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'My Calcy',
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: kPrimaryColor,
+        body: MyCalcy(),
+      ),
+    );
+  }
+}
+
+class MyCalcy extends StatefulWidget {
+  MyCalcy({Key key}) : super(key: key);
+
+  @override
+  _MyCalcyState createState() => _MyCalcyState();
+}
+
+class _MyCalcyState extends State<MyCalcy> {
+  String equation = '2 x 6';
+  String result = '12';
+
+  Map<String, String> operatorsMap = {"÷": "/", "×": "*", "−": "-", "+": "+"};
+  List buttonNames = [
+    "7",
+    "8",
+    "9",
+    "÷",
+    "4",
+    "5",
+    "6",
+    "×",
+    "1",
+    "2",
+    "3",
+    "−",
+    "0",
+    ".",
+    "⌫",
+    "+"
+  ];
+
+  //takes the equation and returns a result
+  void evaluateEquation() {
+    try {
+      // Fix equation
+      Expression exp = (Parser()).parse(operatorsMap.entries.fold(
+          equation, (prev, elem) => prev.replaceAll(elem.key, elem.value)));
+
+      double res = double.parse(
+          exp.evaluate(EvaluationType.REAL, ContextModel()).toString());
+
+      // Output correction for decimal results
+      result = double.parse(res.toString()) == int.parse(res.toStringAsFixed(0))
+          ? res.toStringAsFixed(0)
+          : res.toStringAsFixed(4);
+    } catch (e) {
+      result = "Error";
+    }
+  }
+
+  //button press call back accroding to the text on the button
+  void _buttonPressed(String text, {bool isClear = false}) {
+    setState(() {
+      if (isClear) {
+        // Reset calculator
+        equation = result = "0";
+      } else if (text == "⌫") {
+        // Backspace
+        equation = equation.substring(0, equation.length - 1);
+        if (equation == "") equation = result = "0"; // If all empty
+      } else {
+        // Default
+        if (equation == "0" && text != ".") equation = "";
+        equation += text;
+      }
+
+      // Only evaluate if correct expression
+      if (!operatorsMap.containsKey(equation.substring(equation.length - 1)))
+        evaluateEquation();
+    });
+  }
+
+  // Grid of buttons - Keyboard
+  Widget _buildButtons() {
+    return Material(
+      color: kPrimaryColor,
+      //color: Color(0xFFF2F2F2),
+      child: GridView.count(
+          crossAxisCount: 4, // 4x4 grid
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          //padding: const EdgeInsets.all(8),
+          children: buttonNames.map<Widget>((e) {
+            switch (e) {
+
+              //special buttons at the right side of the screen
+              case "+": // Addition Button
+                return _buildFancyButton(e, isBottom: true);
+              case "×": // Multiplication Button
+                return _buildFancyButton(e);
+              case "−": // Subtraction Button
+                return _buildFancyButton(e);
+              case "÷": // Division Button
+                return _buildFancyButton(e, isTop: true);
+              default:
+                return _button(e, 0);
+            }
+          }).toList()),
+    );
+  }
+
+  // Normal button
+  Widget _button(text, double paddingBot) {
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Material(
+        borderRadius: BorderRadius.all(
+          Radius.circular(100),
+        ),
+        color: kPrimaryColor,
+        child: CircleAvatar(
+          backgroundColor: Colors.transparent,
+          child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+            return InkWell(
+              // Ripple Effect
+              borderRadius: BorderRadius.all(Radius.circular(100)),
+              onTap: () {
+                //on press listener to evry button
+                _buttonPressed(text);
+              },
+              child: Container(
+                // For ripple area
+                width: constraints.maxWidth,
+                height: constraints.maxHeight,
+                alignment: Alignment.center,
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 30.0,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  // Operator Button at the right side of the screen
+  //top and botton should be rounded
+  Widget _buildFancyButton(text, {bool isTop = false, bool isBottom = false}) {
+    return Container(
+      margin: EdgeInsets.fromLTRB(8, isTop ? 8 : 0, 8, isBottom ? 8 : 0),
+      child: Material(
+        color: Color.fromRGBO(237, 65, 53, 1),
+        borderRadius: BorderRadius.vertical(
+            top: isTop ? Radius.circular(100.0) : Radius.circular(0),
+            bottom: isBottom ? Radius.circular(100.0) : Radius.circular(0)),
+        child: InkWell(
+          borderRadius: BorderRadius.vertical(
+              top: isTop ? Radius.circular(100.0) : Radius.circular(0),
+              bottom: isBottom ? Radius.circular(100.0) : Radius.circular(0)),
+          onTap: () {
+            _buttonPressed(text);
+          },
+          child: Center(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: Color.fromRGBO(255, 211, 215, 1),
+                fontSize: 30.0,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            //display area
+            Expanded(
+              flex: 4,
+              child: Container(
+                alignment: Alignment.bottomRight,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    //Expression Text
+                    Text(
+                      equation,
+                      style: TextStyle(color: Colors.white54, fontSize: 18.0),
+                    ),
+                    Text(
+                      result,
+                      style: TextStyle(color: Colors.white, fontSize: 50.0),
+                    )
+                  ],
+                ),
+              ),
+            ),
+
+            //Divider in the middle
+            SizedBox(
+              width: MediaQuery.of(context).size.width * 0.9,
+              child: Divider(
+                color: Colors.grey,
+              ),
+            ),
+
+            //keyborard area
+            Expanded(
+              flex: 5,
+              child: _buildButtons(),
+            ),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 30.0),
+              child: RaisedButton(
+                color: Colors.red,
+                child: Text(
+                  'CLEAR',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onPressed: () {
+                  setState(() {
+                    equation = '';
+                    result = '';
+                  });
+                },
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
